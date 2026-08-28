@@ -1,14 +1,18 @@
 @echo off
 chcp 65001 >nul
-title 游戏安全优化工具 v2.9
+title 游戏安全优化工具 v3.0
 setlocal enabledelayedexpansion
 
 REM ============================================================
-REM  游戏安全优化工具 v2.9
+REM  游戏安全优化工具 v3.0
 REM  支持：三角洲行动 / CS2
 REM  安全承诺：不修改注册表、不更改系统文件
 REM  所有操作均为临时性，重启电脑后自动恢复
-REM  v2.9 更新：新增内存深度清理（释放进程工作集，实测可释放6GB+）
+REM  v3.0 更新：
+REM    - 清理临时文件新增着色器缓存(NVIDIA/DirectX)和Windows更新缓存
+REM    - 新增游戏环境检查（游戏模式/HAGS/虚拟内存/驱动版本，只检查不修改）
+REM    - 系统状态新增游戏模式和GPU性能状态显示
+REM    - 后台进程新增Microsoft Store/反馈中心/你的手机等
 REM ============================================================
 
 net session >nul 2>&1
@@ -21,7 +25,7 @@ if %errorLevel% neq 0 (
 :menu
 cls
 echo ============================================================
-echo           游戏安全优化工具 v2.9
+echo           游戏安全优化工具 v3.0
 echo           支持：三角洲行动 / CS2
 echo ============================================================
 echo.
@@ -44,8 +48,8 @@ echo       游戏启动并进入大厅后运行，自动识别三角洲或CS2，
 echo       设置高优先级并确认电源计划未被游戏篡改。
 echo.
 echo   [4] 清理系统临时文件
-echo       清理用户临时文件夹、系统临时文件夹、缩略图缓存。
-echo       不碰回收站和个人文件，被占用的文件自动跳过。
+echo       清理用户临时文件夹、系统临时文件夹、缩略图缓存、
+echo       NVIDIA/DirectX着色器缓存、Windows更新下载缓存。
 echo.
 echo   [5] 网络延迟优化
 echo       刷新DNS缓存、测试网络延迟、关闭占带宽后台进程。
@@ -61,16 +65,21 @@ echo       注意：火绒有自我保护，可能需要手动右键托盘退出
 echo.
 echo   [8] 内存深度清理
 echo       通过Windows API清空所有进程工作集，释放被缓存占用
- echo       的内存。实测可释放6GB+，完全临时性，不修改系统。
+echo       的内存。实测可释放6GB+，完全临时性，不修改系统。
 echo.
 echo   [9] 查看当前系统状态
-echo       显示CPU/内存/显卡温度/电源计划/网络延迟/进程占用。
+echo       显示CPU/内存/显卡温度/电源计划/网络延迟/进程占用/
+echo       游戏模式状态/GPU性能状态。
 echo.
-echo   [10] 退出
+echo   [10] 游戏环境检查
+echo       检查游戏模式、硬件加速GPU调度、虚拟内存、显卡驱动、
+echo       电源计划等配置，给出优化建议。只检查，不修改任何设置。
+echo.
+echo   [11] 退出
 echo.
 echo  ----------------------------------------------------------
 echo.
-set /p choice=请输入数字 1-10 后按回车: 
+set /p choice=请输入数字 1-11 后按回车: 
 
 if "%choice%"=="1" goto full_optimize
 if "%choice%"=="2" goto kill_processes
@@ -81,7 +90,8 @@ if "%choice%"=="6" goto stop_services
 if "%choice%"=="7" goto kill_huorong
 if "%choice%"=="8" goto mem_clean
 if "%choice%"=="9" goto sys_status
-if "%choice%"=="10" exit
+if "%choice%"=="10" goto game_env_check
+if "%choice%"=="11" exit
 goto menu
 
 :full_optimize
@@ -134,7 +144,7 @@ pause
 goto menu
 
 :kill_processes_quiet
-echo [1/11] 关闭聊天和输入法类进程...
+echo [1/12] 关闭聊天和输入法类进程...
 taskkill /f /im QQ.exe /t >nul 2>&1 && echo      - 已关闭 QQ
 taskkill /f /im WeChat.exe /t >nul 2>&1 && echo      - 已关闭 微信
 taskkill /f /im Weixin.exe /t >nul 2>&1 && echo      - 已关闭 微信4.0
@@ -151,7 +161,7 @@ taskkill /f /im WeMeetApp.exe /t >nul 2>&1
 taskkill /f /im Zoom.exe /t >nul 2>&1 && echo      - 已关闭 Zoom
 taskkill /f /im Discord.exe /t >nul 2>&1 && echo      - 已关闭 Discord
 
-echo [2/11] 关闭视频类进程...
+echo [2/12] 关闭视频类进程...
 taskkill /f /im TenVideo.exe /t >nul 2>&1 && echo      - 已关闭 腾讯视频
 taskkill /f /im QQLive.exe /t >nul 2>&1
 taskkill /f /im iQIYI.exe /t >nul 2>&1 && echo      - 已关闭 爱奇艺
@@ -159,7 +169,7 @@ taskkill /f /im Youku.exe /t >nul 2>&1 && echo      - 已关闭 优酷
 taskkill /f /im bilibili.exe /t >nul 2>&1 && echo      - 已关闭 B站客户端
 taskkill /f /im Spotify.exe /t >nul 2>&1 && echo      - 已关闭 Spotify
 
-echo [3/11] 关闭短视频和直播类进程...
+echo [3/12] 关闭短视频和直播类进程...
 taskkill /f /im douyin.exe /t >nul 2>&1 && echo      - 已关闭 抖音
 taskkill /f /im HuyaExternal.exe /t >nul 2>&1 && echo      - 已关闭 虎牙
 taskkill /f /im Huya.exe /t >nul 2>&1
@@ -168,14 +178,14 @@ taskkill /f /im obs32.exe /t >nul 2>&1
 taskkill /f /im DouyinStudio.exe /t >nul 2>&1 && echo      - 已关闭 抖音直播伴侣
 taskkill /f /im livehime.exe /t >nul 2>&1 && echo      - 已关闭 B站直播姬
 
-echo [4/11] 关闭GPU占用类进程...
+echo [4/12] 关闭GPU占用类进程...
 taskkill /f /im "NVIDIA Broadcast.exe" /t >nul 2>&1 && echo      - 已关闭 NVIDIA Broadcast
 taskkill /f /im "NVIDIA Overlay.exe" /t >nul 2>&1 && echo      - 已关闭 NVIDIA覆盖层
 taskkill /f /im nvsphelper64.exe /t >nul 2>&1 && echo      - 已关闭 NVIDIA ShadowPlay助手
 taskkill /f /im wallpaper64.exe /t >nul 2>&1 && echo      - 已关闭 Wallpaper Engine
 taskkill /f /im wallpaper32.exe /t >nul 2>&1
 
-echo [5/11] 关闭Xbox和游戏录制类进程...
+echo [5/12] 关闭Xbox和游戏录制类进程...
 taskkill /f /im GameBar.exe /t >nul 2>&1 && echo      - 已关闭 Xbox Game Bar
 taskkill /f /im GameBarFTServer.exe /t >nul 2>&1
 taskkill /f /im GameBarPresenceWriter.exe /t >nul 2>&1
@@ -184,7 +194,7 @@ taskkill /f /im XboxApp.exe /t >nul 2>&1 && echo      - 已关闭 Xbox应用
 taskkill /f /im XboxPcAppFT.exe /t >nul 2>&1
 taskkill /f /im bcastdvr.exe /t >nul 2>&1
 
-echo [6/11] 关闭游戏平台和对战平台进程...
+echo [6/12] 关闭游戏平台和对战平台进程...
 taskkill /f /im steamwebhelper.exe /t >nul 2>&1 && echo      - 已关闭 Steam网页辅助
 taskkill /f /im EpicGamesLauncher.exe /t >nul 2>&1 && echo      - 已关闭 Epic启动器
 taskkill /f /im WeGame.exe /t >nul 2>&1 && echo      - 已关闭 WeGame
@@ -192,7 +202,7 @@ taskkill /f /im WeGameLauncher.exe /t >nul 2>&1
 taskkill /f /im "完美世界竞技平台.exe" /t >nul 2>&1 && echo      - 已关闭 完美世界竞技平台
 taskkill /f /im XYServiceLink.exe /t >nul 2>&1 && echo      - 已关闭 迅游加速器监控
 
-echo [7/11] 关闭网盘和下载类进程...
+echo [7/12] 关闭网盘和下载类进程...
 taskkill /f /im OneDrive.exe /t >nul 2>&1 && echo      - 已关闭 OneDrive
 taskkill /f /im OneDrive.Sync.Service.exe /t >nul 2>&1
 taskkill /f /im baidunetdisk.exe /t >nul 2>&1 && echo      - 已关闭 百度网盘
@@ -204,7 +214,7 @@ taskkill /f /im BitComet.exe /t >nul 2>&1 && echo      - 已关闭 BitComet
 taskkill /f /im ida.exe /t >nul 2>&1 && echo      - 已关闭 IDM下载器
 taskkill /f /im IDMan.exe /t >nul 2>&1
 
-echo [8/11] 关闭浏览器和办公类进程...
+echo [8/12] 关闭浏览器和办公类进程...
 taskkill /f /im Doubao.exe /t >nul 2>&1 && echo      - 已关闭 豆包
 taskkill /f /im aha_doctor.exe /t >nul 2>&1
 taskkill /f /im command_helper.exe /t >nul 2>&1
@@ -220,7 +230,7 @@ taskkill /f /im WINWORD.EXE /t >nul 2>&1 && echo      - 已关闭 Word
 taskkill /f /im EXCEL.EXE /t >nul 2>&1 && echo      - 已关闭 Excel
 taskkill /f /im POWERPNT.EXE /t >nul 2>&1 && echo      - 已关闭 PowerPoint
 
-echo [9/11] 关闭远程控制、串流和VPN类进程...
+echo [9/12] 关闭远程控制、串流和VPN类进程...
 taskkill /f /im SunloginClient.exe /t >nul 2>&1 && echo      - 已关闭 向日葵远程
 taskkill /f /im ToDesk.exe /t >nul 2>&1 && echo      - 已关闭 ToDesk
 taskkill /f /im TeamViewer.exe /t >nul 2>&1 && echo      - 已关闭 TeamViewer
@@ -233,7 +243,7 @@ taskkill /f /im "Cloudflare WARP.exe" /t >nul 2>&1
 taskkill /f /im MuMuRemoteBackend.exe /t >nul 2>&1 && echo      - 已关闭 MuMu模拟器远程
 taskkill /f /im MuMuRemoteService.exe /t >nul 2>&1
 
-echo [10/11] 关闭外设控制和灯效类进程...
+echo [10/12] 关闭外设控制和灯效类进程...
 taskkill /f /im lghub_agent.exe /t >nul 2>&1 && echo      - 已关闭 罗技G HUB
 taskkill /f /im lghub.exe /t >nul 2>&1
 taskkill /f /im lghub_system_tray.exe /t >nul 2>&1
@@ -250,7 +260,21 @@ taskkill /f /im "Razer Central.exe" /t >nul 2>&1 && echo      - 已关闭 Razer�
 taskkill /f /im iCUE.exe /t >nul 2>&1 && echo      - 已关闭 海盗船iCUE
 taskkill /f /im LightingService.exe /t >nul 2>&1 && echo      - 已关闭 华硕灯效服务
 
-echo [11/11] 关闭其他非必要进程...
+echo [11/12] 关闭Microsoft Store和系统应用进程...
+taskkill /f /im WinStore.App.exe /t >nul 2>&1 && echo      - 已关闭 Microsoft Store
+taskkill /f /im StoreExperienceHost.exe /t >nul 2>&1 && echo      - 已关闭 应用商店体验主机
+taskkill /f /im WSReset.exe /t >nul 2>&1
+taskkill /f /im FeedbackHub.exe /t >nul 2>&1 && echo      - 已关闭 反馈中心
+taskkill /f /im YourPhone.exe /t >nul 2>&1 && echo      - 已关闭 你的手机
+taskkill /f /im PhoneExperienceHost.exe /t >nul 2>&1 && echo      - 已关闭 手机连接主机
+taskkill /f /im SearchHost.exe /t >nul 2>&1 && echo      - 已关闭 搜索主机
+taskkill /f /im Widgets.exe /t >nul 2>&1 && echo      - 已关闭 小组件
+taskkill /f /im widgetservice.exe /t >nul 2>&1
+taskkill /f /im Microsoft.Photos.exe /t >nul 2>&1 && echo      - 已关闭 照片应用
+taskkill /f /im Music.UI.exe /t >nul 2>&1 && echo      - 已关闭 媒体播放器
+taskkill /f /im StartMenuExperienceHost.exe /t >nul 2>&1 && echo      - 已关闭 开始菜单主机(将自动重启)
+
+echo [12/12] 关闭其他非必要进程...
 taskkill /f /im TabTip.exe /t >nul 2>&1 && echo      - 已关闭 触摸键盘和手写面板
 taskkill /f /im FlashHelperService.exe /t >nul 2>&1 && echo      - 已关闭 Flash助手服务
 taskkill /f /im ServerLicenseMonitor.exe /t >nul 2>&1 && echo      - 已关闭 FANUC许可证监控
@@ -332,23 +356,35 @@ echo.
 echo  正在扫描临时文件大小...
 echo.
 
-powershell -NoProfile -Command "$t1=(Get-ChildItem $env:TEMP -Recurse -ErrorAction SilentlyContinue|Measure-Object Length -Sum).Sum; $t2=(Get-ChildItem 'C:\Windows\Temp' -Recurse -ErrorAction SilentlyContinue|Measure-Object Length -Sum).Sum; $tp=Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Explorer'; $t3=(Get-ChildItem $tp -Filter 'thumbcache_*.db' -ErrorAction SilentlyContinue|Measure-Object Length -Sum).Sum; Write-Host ('  用户临时文件: {0:N1} MB' -f ($t1/1MB)); Write-Host ('  系统临时文件: {0:N1} MB' -f ($t2/1MB)); Write-Host ('  缩略图缓存:   {0:N1} MB' -f ($t3/1MB)); Write-Host ('  合计:         {0:N1} MB' -f (($t1+$t2+$t3)/1MB))"
+powershell -NoProfile -Command "$t1=(Get-ChildItem $env:TEMP -Recurse -ErrorAction SilentlyContinue|Measure-Object Length -Sum).Sum; $t2=(Get-ChildItem 'C:\Windows\Temp' -Recurse -ErrorAction SilentlyContinue|Measure-Object Length -Sum).Sum; $tp=Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Explorer'; $t3=(Get-ChildItem $tp -Filter 'thumbcache_*.db' -ErrorAction SilentlyContinue|Measure-Object Length -Sum).Sum; $t4=(Get-ChildItem (Join-Path $env:LOCALAPPDATA 'NVIDIA\DXCache') -Recurse -ErrorAction SilentlyContinue|Measure-Object Length -Sum).Sum; $t5=(Get-ChildItem (Join-Path $env:LOCALAPPDATA 'NVIDIA\GLCache') -Recurse -ErrorAction SilentlyContinue|Measure-Object Length -Sum).Sum; $t6=(Get-ChildItem (Join-Path $env:LOCALAPPDATA 'D3DSCache') -Recurse -ErrorAction SilentlyContinue|Measure-Object Length -Sum).Sum; $t7=(Get-ChildItem 'C:\Windows\SoftwareDistribution\Download' -Recurse -ErrorAction SilentlyContinue|Measure-Object Length -Sum).Sum; Write-Host ('  用户临时文件:     {0,8:N1} MB' -f ($t1/1MB)); Write-Host ('  系统临时文件:     {0,8:N1} MB' -f ($t2/1MB)); Write-Host ('  缩略图缓存:       {0,8:N1} MB' -f ($t3/1MB)); Write-Host ('  NVIDIA DXCache:   {0,8:N1} MB' -f ($t4/1MB)); Write-Host ('  NVIDIA GLCache:   {0,8:N1} MB' -f ($t5/1MB)); Write-Host ('  DirectX着色器缓存:{0,8:N1} MB' -f ($t6/1MB)); Write-Host ('  Windows更新缓存:  {0,8:N1} MB' -f ($t7/1MB)); Write-Host ('  合计:             {0,8:N1} MB' -f (($t1+$t2+$t3+$t4+$t5+$t6+$t7)/1MB))"
 
 echo.
 echo  正在清理...
 echo.
 
-echo [1/3] 清理用户临时文件夹...
+echo [1/6] 清理用户临时文件夹...
 powershell -NoProfile -Command "Get-ChildItem $env:TEMP -Recurse -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
 echo      - 用户临时文件清理完成
 
-echo [2/3] 清理系统临时文件夹...
+echo [2/6] 清理系统临时文件夹...
 powershell -NoProfile -Command "Get-ChildItem 'C:\Windows\Temp' -Recurse -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
 echo      - 系统临时文件清理完成
 
-echo [3/3] 清理缩略图缓存...
+echo [3/6] 清理缩略图缓存...
 powershell -NoProfile -Command "$tp=Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Explorer'; Get-ChildItem $tp -Filter 'thumbcache_*.db' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue"
 echo      - 缩略图缓存清理完成
+
+echo [4/6] 清理NVIDIA着色器缓存...
+powershell -NoProfile -Command "$dx=Join-Path $env:LOCALAPPDATA 'NVIDIA\DXCache'; $gl=Join-Path $env:LOCALAPPDATA 'NVIDIA\GLCache'; if(Test-Path $dx){Get-ChildItem $dx -Recurse -ErrorAction SilentlyContinue|Remove-Item -Recurse -Force -ErrorAction SilentlyContinue}; if(Test-Path $gl){Get-ChildItem $gl -Recurse -ErrorAction SilentlyContinue|Remove-Item -Recurse -Force -ErrorAction SilentlyContinue}"
+echo      - NVIDIA着色器缓存清理完成（游戏首次加载会重新编译，正常现象）
+
+echo [5/6] 清理DirectX着色器缓存...
+powershell -NoProfile -Command "$d3d=Join-Path $env:LOCALAPPDATA 'D3DSCache'; if(Test-Path $d3d){Get-ChildItem $d3d -Recurse -ErrorAction SilentlyContinue|Remove-Item -Recurse -Force -ErrorAction SilentlyContinue}"
+echo      - DirectX着色器缓存清理完成
+
+echo [6/6] 清理Windows更新下载缓存...
+powershell -NoProfile -Command "Get-ChildItem 'C:\Windows\SoftwareDistribution\Download' -Recurse -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
+echo      - Windows更新下载缓存清理完成
 
 echo.
 echo  清理完成！被占用的文件已自动跳过，不影响系统运行。
@@ -550,10 +586,14 @@ powershell -NoProfile -Command "$os = Get-CimInstance Win32_OperatingSystem; $to
 
 echo.
 echo 【显卡 RTX 3060 Ti】
-nvidia-smi --query-gpu=temperature.gpu,utilization.gpu,memory.used,memory.total,power.draw --format=csv,noheader 2>nul
+nvidia-smi --query-gpu=temperature.gpu,utilization.gpu,memory.used,memory.total,power.draw,pstate --format=csv,noheader 2>nul
 if %errorLevel% neq 0 (
     echo  nvidia-smi不可用，跳过显卡状态
 )
+
+echo.
+echo 【游戏模式】
+powershell -NoProfile -Command "$gm=Get-ItemProperty -Path 'HKCU:\Software\Microsoft\GameBar' -ErrorAction SilentlyContinue; if($gm.AutoGameModeEnabled -eq 1){Write-Host '  游戏模式: 已开启 (推荐)'}else{Write-Host '  游戏模式: 未开启 (建议在设置-游戏中开启)'}"
 
 echo.
 echo 【电源计划】
@@ -570,6 +610,56 @@ echo.
 echo 【占用内存最高的前10个进程】
 powershell -NoProfile -Command "Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 10 @{N='进程名';E={$_.Name}},@{N='内存MB';E={[math]::Round($_.WorkingSet64/1MB,0)}} | Format-Table -AutoSize"
 
+echo.
+pause
+goto menu
+
+:game_env_check
+cls
+echo ============================================================
+echo  游戏环境检查
+echo ============================================================
+echo.
+echo  只检查配置状态，不修改任何设置。检查完成后给出建议。
+echo.
+
+echo 【1/6 游戏模式】
+powershell -NoProfile -Command "$gm=Get-ItemProperty -Path 'HKCU:\Software\Microsoft\GameBar' -ErrorAction SilentlyContinue; if($gm.AutoGameModeEnabled -eq 1){Write-Host '  [OK] 游戏模式已开启'}else{Write-Host '  [建议] 游戏模式未开启，建议在 设置-游戏-游戏模式 中开启'}"
+
+echo.
+echo 【2/6 硬件加速GPU调度 (HAGS)】
+powershell -NoProfile -Command "$hags=Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers' -ErrorAction SilentlyContinue; if($hags.HwSchMode -eq 2){Write-Host '  [OK] 硬件加速GPU调度已开启'}elseif($hags.HwSchMode -eq 1){Write-Host '  [信息] 硬件加速GPU调度为基础模式'}else{Write-Host '  [建议] 硬件加速GPU调度未开启，RTX30系显卡建议开启（设置-系统-显示-图形）'}"
+
+echo.
+echo 【3/6 虚拟内存】
+powershell -NoProfile -Command "$cs=Get-CimInstance Win32_ComputerSystem; $os=Get-CimInstance Win32_OperatingSystem; $ram=[math]::Round($os.TotalVisibleMemorySize/1MB,0); if($cs.AutomaticManagedPagefile){Write-Host ('  [OK] 虚拟内存为系统自动管理 (物理内存: ' + $ram + ' GB)')}else{$pf=Get-CimInstance Win32_PageFileSetting; if($pf){Write-Host ('  [信息] 虚拟内存为自定义: 初始' + $pf.InitialSize + 'MB / 最大' + $pf.MaximumSize + 'MB')}else{Write-Host '  [警告] 未检测到页面文件，建议开启虚拟内存'}}"
+
+echo.
+echo 【4/6 显卡驱动版本】
+nvidia-smi --query-gpu=driver_version,name --format=csv,noheader 2>nul
+if %errorLevel% equ 0 (
+    echo  [信息] 建议定期更新NVIDIA驱动，游戏发布新驱动时优先更新
+) else (
+    echo  [警告] 无法读取显卡驱动信息，请确认NVIDIA驱动已正确安装
+)
+
+echo.
+echo 【5/6 电源计划】
+powercfg /getactivescheme | findstr "("
+powershell -NoProfile -Command "$p=powercfg /getactivescheme; if($p -match '卓越性能'){Write-Host '  [OK] 当前为卓越性能电源计划'}elseif($p -match '高性能'){Write-Host '  [信息] 当前为高性能电源计划，卓越性能更好'}else{Write-Host '  [建议] 当前不是高性能/卓越性能，建议切换到卓越性能'}"
+
+echo.
+echo 【6/6 内存容量】
+powershell -NoProfile -Command "$os=Get-CimInstance Win32_OperatingSystem; $ram=[math]::Round($os.TotalVisibleMemorySize/1MB,0); if($ram -ge 32){Write-Host ('  [OK] 内存充足: ' + $ram + ' GB，游戏无压力')}elseif($ram -ge 16){Write-Host ('  [信息] 内存: ' + $ram + ' GB，主流游戏够用，3A大作建议32GB')}else{Write-Host ('  [建议] 内存仅 ' + $ram + ' GB，建议升级到16GB以上')}}"
+
+echo.
+echo ============================================================
+echo  检查完成
+echo ============================================================
+echo.
+echo  以上检查只读取配置，不做任何修改。
+echo  如需优化，请根据建议手动在Windows设置中调整，
+echo  或使用本工具的其他选项进行临时性优化。
 echo.
 pause
 goto menu
